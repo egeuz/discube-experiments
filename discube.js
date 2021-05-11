@@ -88,7 +88,7 @@ class CubeFragment {
 
   initFluidLines() {
     this.line1 = new FluidLine(this.center, this.basePoints[0])
-    this.line2 = new FluidLine(this.center, this.basePoints[2], true)
+    this.line2 = new FluidLine(this.center, this.basePoints[2])
   }
 
   update(center) {
@@ -109,7 +109,7 @@ class CubeFragment {
   }
 
   render() {
-    let points = [...this.line1.locations, ...this.basePoints, ...this.line2.locations];
+    let points = [...this.line1.locations, ...this.basePoints, ...[...this.line2.locations].reverse()];
     push()
     fill(this.color)
     beginShape()
@@ -126,17 +126,9 @@ class FluidLine {
     this.segmentLength = 8;
     this.segmentAmount = 50;
     //computed properties
-    this.reversed = reversed;
     this.target = createVector();
     this.angles = new Array(this.segmentAmount).fill(0);
     this.locations = new Array(this.segmentAmount).fill(createVector(0, 0));
-
-    if (reversed) {
-      this.locations[this.locations.length - 1] = center;
-    } else {
-      this.locations[this.locations.length - 1] = anchor;
-    }
-
   }
 
   update(center, anchor) {
@@ -171,30 +163,16 @@ class FluidLine {
   }
 
   reachSegments() {
-    if (this.reversed) {
-      for (let i = 0; i < this.locations.length; i++) {
-        const x = (i === 0) ? this.anchor.x : this.target.x;
-        const y = (i === 0) ? this.anchor.y : this.target.y;
-        const dx = x - this.locations[i].x;
-        const dy = y - this.locations[i].y;
-        this.angles[i] = atan2(dy, dx);
-        this.target = createVector(
-          x - cos(this.angles[i]) * this.segmentLength,
-          y - sin(this.angles[i]) * this.segmentLength
-        );
-      }
-    } else {
-      for (let i = 0; i < this.locations.length; i++) {
-        const x = (i === 0) ? this.center.x : this.target.x;
-        const y = (i === 0) ? this.center.y : this.target.y;
-        const dx = x - this.locations[i].x;
-        const dy = y - this.locations[i].y;
-        this.angles[i] = atan2(dy, dx);
-        this.target = createVector(
-          x - cos(this.angles[i]) * this.segmentLength,
-          y - sin(this.angles[i]) * this.segmentLength
-        );
-      }
+    for (let i = 0; i < this.locations.length; i++) {
+      const x = (i === 0) ? this.center.x : this.target.x;
+      const y = (i === 0) ? this.center.y : this.target.y;
+      const dx = x - this.locations[i].x;
+      const dy = y - this.locations[i].y;
+      this.angles[i] = atan2(dy, dx);
+      this.target = createVector(
+        x - cos(this.angles[i]) * this.segmentLength,
+        y - sin(this.angles[i]) * this.segmentLength
+      );
     }
   }
 
