@@ -3,7 +3,7 @@ let sandcube;
 function setup() {
   colorMode(HSB, 1)
   createCanvas(windowWidth, windowHeight)
-  sandcube = new Sandcube(createVector(width / 2, height / 2), 220, 8)
+  sandcube = new Sandcube(createVector(width / 2, height / 2), 180, 12)
 }
 
 function windowResized() {
@@ -37,7 +37,7 @@ class Sandcube {
     this.color1 = this.generateColor()
     this.color2 = this.generateColor()
     this.color3 = this.generateColor()
-    this.maxSwaps = 1500
+    this.maxSwaps = 50
     //hexagon properties
     this.hexagon = this.initHexagon()
     this.hexMask = this.initHexMask()
@@ -116,6 +116,7 @@ class Sandcube {
 
   initGrid() {
     let grid = []
+    let index = 0;
     const size = this.resolution;
     for (let x = -this.radius; x < this.radius; x += size) {
       for (let y = -this.radius; y < this.radius; y += size) {
@@ -127,8 +128,8 @@ class Sandcube {
         ]
         const pos = points[0]
         const clr = this.getBlockBaseColor(points)
-
-        grid.push({ pos, clr, size })
+        grid.push({ pos, clr, size, index })
+        index++
       }
     }
     return grid
@@ -194,19 +195,41 @@ class Sandcube {
   }
 
   updateColors() {
-    const speed = abs(this.rotationVelocity)
-    const numSwaps = map(speed, 0, 2, 0, this.maxSwaps)
-    for (let i = 0; i < numSwaps; i++) {
-      const block = random(this.grid)
-      const blockColor = block.clr;
-      const blockIndex = this.grid.indexOf(block)
-      const adjacentBlocks = this.getAdjacentBlocks(blockIndex)
-      const swapBlock = random(adjacentBlocks)
-      const swapColor = swapBlock.clr
-      block.clr = swapColor;
-      swapBlock.clr = blockColor;
+    /* ROTATION BASED IMPLEMENTATION*/
+    if (this.rotationVelocity !== 0) {
+      const speed = abs(this.rotationVelocity)
+      const numSwaps = map(speed, 0, 2, 0, this.maxSwaps)
+      for (let i = 0; i < numSwaps; i++) {
+        const block = random(this.grid)
+        const swapBlock = this.rotateBlock(block, this.rotationVelocity)
+        if (swapBlock) {
+          const blockColor = block.clr
+          const swapColor = swapBlock.clr
+          block.clr = swapColor
+          swapBlock.clr = blockColor
+        }
+      }
     }
+
+    /* RANDOM ADJACENT BLOCK IMPLEMENTATION */
+    // const speed = abs(this.rotationVelocity)
+    // const numSwaps = map(speed, 0, 2, 0, this.maxSwaps)
+    // const swapStep = floor(map(speed, 0, 2, 0, this.resolution / 2)) + 1
+    // for (let i = 0; i < numSwaps; i++) {
+    //   const block = random(this.grid)
+    //   const blockColor = block.clr;
+    //   const blockIndex = this.grid.indexOf(block)
+    //   const adjacentBlocks = this.getAdjacentBlocks(blockIndex, swapStep)
+    //   const swapBlock = random(adjacentBlocks)
+    //   if (swapBlock) {
+    //     const swapColor = swapBlock.clr
+    //     block.clr = swapColor;
+    //     swapBlock.clr = blockColor;
+    //   }
+    // }
   }
+
+
 
   //HELPER METHODS
   getBlockBaseColor(points) {
@@ -228,6 +251,10 @@ class Sandcube {
 
     const n = floor(random(1, 4))
     return this[`color${n}`]
+  }
+
+  generateColor() {
+    return color(random(), .6, .9)
   }
 
   contains(shape, x, y) {
@@ -255,20 +282,43 @@ class Sandcube {
     }
   }
 
-  getAdjacentBlocks(i) {
+  getAdjacentBlocks(i, v) {
     const blocks = []
-    if (this.grid[i - 1]) blocks.push(this.grid[i - 1]) //w
-    if (this.grid[i + 1]) blocks.push(this.grid[i + 1]) // e
-    if (this.grid[i - this.cols]) blocks.push(this.grid[i - this.cols]) //n
-    if (this.grid[i - this.cols - 1]) blocks.push(this.grid[i - this.cols - 1]) //nw
-    if (this.grid[i - this.cols + 1]) blocks.push(this.grid[i - this.cols + 1]) //ne
-    if (this.grid[i + this.cols]) blocks.push(this.grid[i + this.cols]) //s
-    if (this.grid[i + this.cols - 1]) blocks.push(this.grid[i + this.cols - 1]) //sw
-    if (this.grid[i + this.cols + 1]) blocks.push(this.grid[i + this.cols + 1]) //se
+    if (this.rotationVelocity > 0) {
+      //clockwise -> go east
+      if (this.grid[i + v]) blocks.push(this.grid[i + 1]) // e
+      if (this.grid[i - this.cols * ceil(v / 2)]) blocks.push(this.grid[i - this.cols]) //n
+      if (this.grid[i + this.cols * ceil(v / 2)]) blocks.push(this.grid[i + this.cols]) //s
+      if (this.grid[i - this.cols * ceil(v / 2) + v]) blocks.push(this.grid[i - this.cols + 1]) //ne
+      if (this.grid[i + this.cols * ceil(v / 2) + v]) blocks.push(this.grid[i + this.cols + 1]) //se
+    } else if (this.rotationVelocity <= 0) {
+      //counterclockwise, go west
+      if (this.grid[i - v]) blocks.push(this.grid[i - 1]) //w
+      if (this.grid[i - this.cols * ceil(v / 2)]) blocks.push(this.grid[i - this.cols]) //n
+      if (this.grid[i + this.cols * ceil(v / 2)]) blocks.push(this.grid[i + this.cols]) //s
+      if (this.grid[i - this.cols * ceil(v / 2) - v]) blocks.push(this.grid[i - this.cols - 1]) //nw
+      if (this.grid[i + this.cols * ceil(v / 2) - v]) blocks.push(this.grid[i + this.cols - 1]) //sw
+    }
     return blocks
   }
 
-  generateColor() {
-    return color(random(), .6, .9)
+  rotateBlock(block, speed) {
+    const {x, y} = block.pos;
+    const radius = sqrt(x**2 + y**2)
+    const theta = atan2(y, x) //?
+    const targetAngle = theta + speed //may modulate speed
+    const rx = sin(targetAngle) * radius
+    const ry = cos(targetAngle) * radius
+    const swapBlock = this.getBlockContainingPoint(rx, ry)
+    return swapBlock
   }
+
+  getBlockContainingPoint(x, y) {
+    const bx = floor(x / this.resolution) * this.resolution;
+    const by = floor(y / this.resolution) * this.resolution;
+    const block = this.grid.filter(b => b.pos.x == bx && b.pos.y == by) //might break
+    return block[0]
+  }
+
+
 }
